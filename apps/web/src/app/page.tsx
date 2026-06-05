@@ -1,7 +1,11 @@
-export default function Home() {
+import { getEvents } from '@/lib/supabase'
+
+export default async function Page() {
+  const events = await getEvents()
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black text-white">
-      <h1 className="text-2xl font-bold">GeoMarket</h1>
+    <main style={{ padding: '2rem' }}>
+      <p>GeoMarket</p>
+      <p>Events in DB: {events.length}</p>
     </main>
   )
 }
