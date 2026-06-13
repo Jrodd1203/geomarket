@@ -101,8 +101,8 @@ export default function GlobeView({ events, selectedEvent, onEventSelect }: Glob
         .map((e) => ({
           lat: e.lat!,
           lng: e.lng!,
-          color: RISK_COLOR[e.event_analyses[0]?.risk_level ?? 'low'],
-          radius: RISK_RADIUS[e.event_analyses[0]?.risk_level ?? 'low'],
+          color: RISK_COLOR[e.event_analyses?.[0]?.risk_level ?? 'low'],
+          radius: RISK_RADIUS[e.event_analyses?.[0]?.risk_level ?? 'low'],
           event: e,
         })),
     [events]
@@ -110,7 +110,7 @@ export default function GlobeView({ events, selectedEvent, onEventSelect }: Glob
 
   const arcsData: ArcDatum[] = useMemo(() => {
     if (selectedEvent?.lat == null || selectedEvent?.lng == null) return []
-    const analysis = selectedEvent.event_analyses[0]
+    const analysis = selectedEvent.event_analyses?.[0]
     if (!analysis) return []
     return analysis.affected_tickers.map((ticker) => {
       const [endLat, endLng] = exchangeCoords(ticker.symbol)

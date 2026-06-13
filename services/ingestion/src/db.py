@@ -72,17 +72,28 @@ def _sync_upsert_analysis(analysis: EventAnalysis) -> None:
     ).execute()
 
 
-def _sync_upsert_ticker(symbol: str, name: str, sector: str | None, price: float) -> None:
-    _get_client().table("tickers").upsert(
-        {
-            "symbol": symbol,
-            "name": name,
-            "sector": sector,
-            "last_price": price,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
-        },
-        on_conflict="symbol",
-    ).execute()
+_VALID_ASSET_TYPES = {"stock", "crypto", "forex", "commodity"}
+
+
+def _sync_upsert_ticker(
+    symbol: str,
+    name: str,
+    sector: str | None,
+    price: float | None,
+    asset_type: str = "stock",
+) -> None:
+    if asset_type not in _VALID_ASSET_TYPES:
+        asset_type = "stock"
+    data: dict = {
+        "symbol": symbol,
+        "name": name,
+        "sector": sector,
+        "asset_type": asset_type,
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+    }
+    if price is not None:
+        data["last_price"] = price
+    _get_client().table("tickers").upsert(data, on_conflict="symbol").execute()
 
 
 # ---------------------------------------------------------------------------
@@ -97,5 +108,11 @@ async def upsert_analysis(analysis: EventAnalysis) -> None:
     await asyncio.to_thread(_sync_upsert_analysis, analysis)
 
 
-async def upsert_ticker(symbol: str, name: str, sector: str | None, price: float) -> None:
-    await asyncio.to_thread(_sync_upsert_ticker, symbol, name, sector, price)
+async def upsert_ticker(
+    symbol: str,
+    name: str,
+    sector: str | None,
+    price: float | None,
+    asset_type: str = "stock",
+) -> None:
+    await asyncio.to_thread(_sync_upsert_ticker, symbol, name, sector, price, asset_type)

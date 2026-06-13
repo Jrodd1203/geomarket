@@ -4,6 +4,7 @@ import csv
 import hashlib
 import io
 import logging
+import re
 import zipfile
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -16,24 +17,34 @@ logger = logging.getLogger(__name__)
 
 _LASTUPDATE = "http://data.gdeltproject.org/gdeltv2/lastupdate.txt"
 
+# CRISISLEX_CRISISLEXREC removed — it matches local accidents/crimes, not geopolitical events.
+# POLITICAL_ removed — too broad; catches local politics and noise. ECON_ covers policy spillovers.
 _THEME_PREFIXES = [
-    "CRISISLEX_CRISISLEXREC",
     "WARFARE",
     "SANCTION",
-    "OIL",
+    "OIL_",
     "NATURAL_DISASTER",
     "ECON_",
-    "POLITICAL_",
+    "TERROR",
+    "NUCLEAR",
+    "EPIDEMIC",
+    "WB_2_SECURITY_SERVICES",      # security forces / conflicts
+    "TAX_FNCACT",                  # financial/corporate actions
+    "WB_1390_TARIFFS_TRADE_BARRIERS",
 ]
 
 _THEME_TO_EVENT_TYPE = {
-    "WARFARE": "MILITARY",
-    "SANCTION": "SANCTIONS",
-    "OIL": "ENERGY",
-    "NATURAL_DISASTER": "DISASTER",
-    "ECON_": "ECONOMIC",
-    "POLITICAL_": "POLITICAL",
-    "CRISISLEX_CRISISLEXREC": "CRISIS",
+    "WARFARE":              "MILITARY",
+    "SANCTION":             "SANCTIONS",
+    "OIL_":                 "ENERGY",
+    "NATURAL_DISASTER":     "DISASTER",
+    "ECON_":                "ECONOMIC",
+    "TERROR":               "SECURITY",
+    "NUCLEAR":              "SECURITY",
+    "EPIDEMIC":             "HUMANITARIAN",
+    "WB_2_SECURITY_SERVICES": "MILITARY",
+    "TAX_FNCACT":           "ECONOMIC",
+    "WB_1390_TARIFFS_TRADE_BARRIERS": "ECONOMIC",
 }
 
 
@@ -78,13 +89,51 @@ def _parse_occurred_at(record_id: str) -> datetime | None:
         return None
 
 
+_BLOCKLIST = [
+    # Entertainment / lifestyle
+    "iheart.com", "gossip", "entertainment", "celebrity", "music",
+    "sports", "usmagazine", "tmz", "buzzfeed", "reddit", "youtube", "tiktok",
+    # Local crime / accident patterns
+    "police-blotter", "obituar", "local-crime", "traffic-crash",
+    # Known local news aggregators / low-quality sources
+    "patch.com", "aol.com/article",
+]
+
+# Words that mark a slug as a document reference code, not a human-readable title.
+# Pattern: all-uppercase segment that also contains a digit (e.g. A02A7TBC, SCN8329).
+_CODE_WORD = re.compile(r'^[A-Z0-9]{4,}$')
+
+_DATE_PATTERN = re.compile(
+    r"(^|[-_])\d{4}[-_]\d{2}[-_]\d{2}([-_]|$)"  # leading/trailing YYYY-MM-DD
+    r"|[-_]\d{8}([-_]|$)"                          # trailing YYYYMMDD
+)
+
+
+def _is_blocked(url: str) -> bool:
+    u = url.lower()
+    return any(b in u for b in _BLOCKLIST)
+
+
 def _make_title(event_type: str, source_url: str) -> str:
     try:
-        domain = urlparse(source_url).netloc.removeprefix("www.")
+        path = urlparse(source_url).path.rstrip("/")
+        slug = path.split("/")[-1] if path else ""
+        if "." in slug:
+            slug = slug.rsplit(".", 1)[0]
+        slug = _DATE_PATTERN.sub(" ", slug).strip("- _")
+        title = slug.replace("-", " ").replace("_", " ").strip()
+        words = title.split()
+        if len(words) >= 4:
+            # Reject if more than 1/3 of the words look like reference codes
+            code_count = sum(
+                1 for w in words
+                if _CODE_WORD.match(w) and any(c.isdigit() for c in w)
+            )
+            if code_count <= len(words) / 3:
+                return title.title()
     except Exception:
-        domain = "unknown source"
-    label = event_type.replace("_", " ").title()
-    return f"{label} — {domain}"
+        pass
+    return f"{event_type.replace('_', ' ').title()} Event"
 
 
 async def fetch_recent_events(lookback_minutes: int = 15) -> list[GdeltEvent]:
@@ -119,7 +168,7 @@ async def fetch_recent_events(lookback_minutes: int = 15) -> list[GdeltEvent]:
                     continue
 
                 source_url = row[4]
-                if not source_url or source_url in seen_urls:
+                if not source_url or source_url in seen_urls or _is_blocked(source_url):
                     continue
                 seen_urls.add(source_url)
 

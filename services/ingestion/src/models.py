@@ -20,9 +20,10 @@ class GdeltEvent(BaseModel):
 class AffectedTicker(BaseModel):
     symbol: str
     name: str
-    expected_direction: str  # "up" | "down" | "neutral"
+    asset_type: str = "stock"  # "stock" | "crypto" | "forex" | "commodity"
+    expected_direction: str    # "up" | "down" | "neutral"
     rationale: str
-    confidence: float  # 0.0 – 1.0
+    confidence: float          # 0.0 – 1.0
 
 
 class EventAnalysis(BaseModel):

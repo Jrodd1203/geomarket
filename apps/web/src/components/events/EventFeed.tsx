@@ -34,15 +34,7 @@ interface EventFeedProps {
 
 export default function EventFeed({ events, selectedEvent, onEventSelect }: EventFeedProps) {
   return (
-    <div className="fixed left-0 top-0 h-full w-72 bg-gray-950/85 backdrop-blur-md border-r border-gray-800 z-10 flex flex-col">
-      <div className="px-4 py-3 border-b border-gray-800 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <h1 className="text-white font-bold text-sm tracking-[0.15em] uppercase">GeoMarket</h1>
-        </div>
-        <p className="text-gray-500 text-xs mt-0.5 tracking-wide">Geopolitical Intelligence</p>
-      </div>
-
+    <div className="fixed left-0 top-10 bottom-0 w-72 bg-gray-950/85 backdrop-blur-md border-r border-gray-800 z-10 flex flex-col">
       <div className="px-3 py-2 border-b border-gray-800 shrink-0">
         <p className="text-gray-500 text-xs uppercase tracking-widest font-medium">
           Live Events — {events.length}
@@ -51,7 +43,7 @@ export default function EventFeed({ events, selectedEvent, onEventSelect }: Even
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         {events.map((event) => {
-          const analysis = event.event_analyses[0]
+          const analysis = event.event_analyses?.[0]
           const isSelected = selectedEvent?.id === event.id
 
           return (
@@ -77,7 +69,7 @@ export default function EventFeed({ events, selectedEvent, onEventSelect }: Even
                       <span className="text-gray-500 text-xs">{event.country}</span>
                     )}
                     <span className="text-gray-700 text-xs">·</span>
-                    <span className="text-gray-600 text-xs">{timeAgo(event.occurred_at)}</span>
+                    <span className="text-gray-600 text-xs" suppressHydrationWarning>{timeAgo(event.occurred_at)}</span>
                   </div>
                   {analysis && (
                     <span className={`text-xs font-medium mt-0.5 block ${RISK_LABEL[analysis.risk_level]}`}>
@@ -92,7 +84,7 @@ export default function EventFeed({ events, selectedEvent, onEventSelect }: Even
       </div>
 
       <div className="px-4 py-2 border-t border-gray-800 shrink-0">
-        <p className="text-gray-700 text-xs">Powered by GDELT · Claude AI</p>
+        <p className="text-gray-700 text-xs">Powered by GDELT · OpenAI</p>
       </div>
     </div>
   )

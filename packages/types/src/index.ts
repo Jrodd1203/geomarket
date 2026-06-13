@@ -13,9 +13,12 @@ export interface Event {
   ingested_at: string
 }
 
+export type AssetType = 'stock' | 'crypto' | 'forex' | 'commodity'
+
 export interface AffectedTicker {
   symbol: string
   name: string
+  asset_type?: AssetType
   expected_direction: 'up' | 'down' | 'neutral'
   rationale: string
   confidence: number
@@ -35,6 +38,7 @@ export interface Ticker {
   symbol: string
   name: string | null
   sector: string | null
+  asset_type: AssetType
   last_price: number | null
   last_updated: string | null
 }
